@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board.spring.mybatis.BoardDAO">
+
+	<insert id="insertBoard" parameterType="boarddto" >
+		insert into board2(title, contents, writer, pw, viewcount, writetime) 
+		values(#{title}, #{contents}, #{writer}, #{pw}, 0, now())
+	</insert>
+	
+	<select id="getTotalBoard" resultType="int">
+		select count(*) from board2
+	</select>
+	
+	<select id="boardList" resultType="boarddto" parameterType="int">
+		select * from board2 order by writetime desc limit
+		<foreach collection="array" item="num" separator=","> 
+			#{num}
+		</foreach>
+	</select>
+	
+	<update id="updateViewcount" parameterType="int">
+		update board2 set viewcount=viewcount+1 where seq=#{seq}
+	</update>
+	
+	<select id="selectDetail" parameterType="int" resultType="boarddto">
+		select * from board2 where seq=#{seq}
+	</select>
+	
+	<delete id="deleteBoard" parameterType="int">
+		delete from board2 where seq=#{seq}
+	</delete>
+	
+	<update id="updateBoard" parameterType="boarddto">
+		update board2 set writetime=now(),
+		title=#{title}, contents=#{contents} 
+		where seq=#{seq}
+	</update>
+	
+	<!-- map.put("colname", item);
+		 map.put("colvalue", word); -->
+	<select id="searchList" parameterType="hashmap" 
+	resultType="boarddto">
+		select * from board2 where 
+		<choose>
+			<when test="colname == null">
+				title like concat('%', #{colvalue}, '%') or
+				contents like concat('%', #{colvalue}, '%') or
+				writer like concat('%', #{colvalue}, '%')
+			</when>
+			<otherwise>
+				${colname} like concat('%', #{colvalue}, '%')
+			</otherwise>
+		</choose>
+		order by writetime desc
+	</select>
+	
+	<select id="getSearchBoard" parameterType="hashmap" 
+	resultType="int">
+		select count(*) from board2 where 
+		<choose>
+			<when test="colname == null">
+				title like concat('%', #{colvalue}, '%') or
+				contents like concat('%', #{colvalue}, '%') or
+				writer like concat('%', #{colvalue}, '%')
+			</when>
+			<otherwise>
+				${colname} like concat('%', #{colvalue}, '%')
+			</otherwise>
+		</choose>
+	</select>
+	
+	<!-- join을 하는 경우 -->
+	<!-- 글 작성자의 회원의 이름, 이메일, 폰번호, 가입일자 -->
+	<!-- property : 매개변수 이름, column : db 컬럼명 -->
+	<!-- 1대 1의 관계인 경우 association 태그
+	<association property="member" resultMap="memberMap"/> -->
+	<!-- 만약 1대 N 관계인 경우 collection 태그 
+	<collection property="member" resultMap="memberMap"/> -->
+	<!-- 태그 순서 : id, result, association, collection -->
+	<resultMap type="memberdto" id="memberMap">
+		<id property="id" column="id"/>
+		<result property="name" column="name"/>
+		<result property="phone" column="phone"/>
+		<result property="email" column="email"/>
+		<result property="regtime" column="regtime"/>
+		<result property="pw" column="m_pw"/>
+	</resultMap>
+	<resultMap type="board.spring.mybatis.BoardMemberDTO" id="boardwriterMap">
+		<id property="seq" column="seq"/>
+		<result property="title" column="title"/>
+		<result property="contents" column="contents"/>
+		<result property="viewcount" column="viewcount"/>
+		<result property="writetime" column="writetime"/>
+		<result property="pw" column="b_pw"/>
+		<association property="member" resultMap="memberMap"/>
+	</resultMap>
+	
+	<!-- public BoardMemberDTO boardWriterInform(int seq); -->
+	<select id="boardWriterInform" parameterType="int"
+	resultMap="boardwriterMap">
+		select seq, title, contents, id, name, phone, email, 
+		regtime, b.pw b_pw, m.pw m_pw
+		from board2 b inner join c_member m
+		on b.writer = m.id
+		where seq=#{seq}
+	</select>
+	
+</mapper>
